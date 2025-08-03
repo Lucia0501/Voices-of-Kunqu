@@ -1,0 +1,266 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Cultural Design System Variables */
+@layer base {
+  :root {
+    /* Kunqu Cultural Colors */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 43 96% 56%; /* Kunqu Gold */
+    --primary-foreground: 0 0% 98%;
+    --secondary: 210 40% 80%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 98%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 43 96% 56%;
+    --radius: 0.75rem;
+    
+    /* Cultural spacing and typography */
+    --cultural-spacing: 1.5rem;
+    --performance-title-size: 2rem;
+    --cultural-line-height: 1.75;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 43 96% 56%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 43 96% 56%;
+  }
+}
+
+/* Base typography for cultural content */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* Cultural typography hierarchy */
+  .cultural-title {
+    @apply text-4xl font-bold font-cultural text-cultural-gradient;
+    line-height: var(--cultural-line-height);
+    letter-spacing: 0.025em;
+  }
+  
+  .performance-title {
+    @apply text-3xl font-semibold font-cultural text-shakespeare-800;
+    font-size: var(--performance-title-size);
+    line-height: var(--cultural-line-height);
+  }
+  
+  .cultural-heading {
+    @apply text-2xl font-semibold font-cultural text-shakespeare-700;
+    letter-spacing: 0.015em;
+  }
+  
+  .cultural-subheading {
+    @apply text-xl font-medium font-cultural text-shakespeare-600;
+  }
+  
+  .cultural-body {
+    @apply text-base font-cultural text-shakespeare-700;
+    line-height: var(--cultural-line-height);
+  }
+  
+  .chinese-text {
+    @apply font-chinese text-lg;
+    font-weight: 400;
+    letter-spacing: 0.05em;
+  }
+  
+  .pinyin-text {
+    @apply font-ui text-sm text-shakespeare-500;
+    font-style: italic;
+  }
+  
+  /* Audio player specific styles */
+  .audio-controls {
+    @apply flex items-center space-x-4 p-4 bg-white rounded-cultural shadow-cultural;
+  }
+  
+  .audio-progress {
+    @apply w-full h-2 bg-gray-200 rounded-full overflow-hidden;
+  }
+  
+  .audio-progress-fill {
+    @apply h-full bg-gradient-to-r from-kunqu-400 to-kunqu-600 transition-all duration-150;
+  }
+  
+  /* Text synchronization highlighting */
+  .text-sync-highlight {
+    @apply bg-gradient-to-r from-kunqu-200 to-kunqu-300 rounded px-1 py-0.5;
+    animation: text-highlight 0.5s ease-out;
+  }
+  
+  .text-sync-active {
+    @apply bg-gradient-to-r from-kunqu-300 to-kunqu-400 text-shakespeare-900 font-medium;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
+  }
+  
+  /* Cultural content cards */
+  .performance-card {
+    @apply cultural-card hover:border-kunqu-300 hover:shadow-glow transition-all duration-300;
+  }
+  
+  .glossary-card {
+    @apply cultural-card border-l-4 border-l-cultural-jade;
+  }
+  
+  /* Accessibility enhancements */
+  .focus-visible {
+    @apply outline-none ring-2 ring-kunqu-500 ring-offset-2;
+  }
+  
+  .sr-only {
+    @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+    clip: rect(0, 0, 0, 0);
+  }
+  
+  /* High contrast mode support */
+  @media (prefers-contrast: high) {
+    .cultural-card {
+      @apply border-2 border-shakespeare-600;
+    }
+    
+    .cultural-button {
+      @apply border-2 border-shakespeare-800;
+    }
+  }
+  
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    * {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+  
+  /* Print styles for cultural content */
+  @media print {
+    .cultural-card {
+      @apply shadow-none border border-gray-300;
+    }
+    
+    .cultural-button {
+      @apply bg-transparent border border-gray-600 text-gray-800;
+    }
+    
+    .audio-controls {
+      @apply hidden;
+    }
+  }
+}
+
+/* Custom scrollbar for cultural content */
+@layer utilities {
+  .cultural-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: theme('colors.kunqu.400') theme('colors.gray.100');
+  }
+  
+  .cultural-scrollbar::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .cultural-scrollbar::-webkit-scrollbar-track {
+    @apply bg-gray-100 rounded-full;
+  }
+  
+  .cultural-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-kunqu-400 rounded-full;
+  }
+  
+  .cultural-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-kunqu-500;
+  }
+}
+
+/* Loading animations for cultural content */
+@keyframes cultural-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes audio-wave {
+  0%, 100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(1.5);
+  }
+}
+
+.cultural-loading {
+  animation: cultural-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.audio-wave {
+  animation: audio-wave 1s ease-in-out infinite;
+}
+
+.audio-wave:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.audio-wave:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.audio-wave:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+/* Cultural content layout helpers */
+.cultural-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--cultural-spacing);
+}
+
+.cultural-flex {
+  display: flex;
+  gap: var(--cultural-spacing);
+}
+
+.cultural-stack {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--cultural-spacing) / 2);
+}
