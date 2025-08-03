@@ -1,0 +1,727 @@
+// Voices of Kunqu - Cultural Database Schema
+// This schema focuses on preserving cultural authenticity while enabling modern features
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User Management with Cultural Focus
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(USER)
+  image     String?
+  
+  // Cultural Learning Profile
+  culturalLevel         CulturalLevel @default(BEGINNER)
+  preferredComplexity   ComplexityLevel @default(BEGINNER)
+  culturalInterests     String[]
+  nativeLanguage        String @default("en-GB")
+  learningGoals         String[]
+  
+  // Audio Preferences
+  preferredVoice        String @default("nova")
+  preferredSpeed        Float @default(1.0)
+  autoplayEnabled       Boolean @default(true)
+  
+  // Accessibility Settings
+  highContrastMode      Boolean @default(false)
+  reducedMotion         Boolean @default(false)
+  screenReaderMode      Boolean @default(false)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  lastActive DateTime @default(now())
+  
+  // Relations
+  accounts            Account[]
+  sessions            Session[]
+  progressEntries     UserProgress[]
+  bookmarks          Bookmark[]
+  discussions        Discussion[]
+  discussionReplies  DiscussionReply[]
+  culturalContributions CulturalContribution[]
+  
+  @@map("users")
+}
+
+// NextAuth.js Account Model
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+// NextAuth.js Session Model
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("sessions")
+}
+
+// Cultural Performance Content
+model Performance {
+  id String @id @default(cuid())
+  
+  // Cultural Identity
+  titleChinese         String
+  titleEnglish         String
+  titlePinyin          String?
+  traditionalClassification String?
+  historicalPeriod     HistoricalPeriod
+  
+  // Content Structure
+  description          String
+  culturalSignificance String @db.Text
+  shakespeareanParallels String? @db.Text
+  
+  // Performance Metadata
+  durationMinutes      Int
+  complexityLevel      ComplexityLevel
+  emotionalThemes      EmotionalTheme[]
+  tags                 String[]
+  
+  // Content Structure (JSON)
+  acts                 Json // Structured act/scene data
+  characters           Json // Character archetypes and roles
+  musicalElements      Json? // Musical patterns, rhythms
+  
+  // Translation and Audio
+  translationMetadata  Json?
+  audioSegments        Json? // Pre-segmented for TTS
+  
+  // Content Management
+  version              Int @default(1)
+  status               ContentStatus @default(DRAFT)
+  authorId             String?
+  reviewedBy           String?
+  publishedAt          DateTime?
+  
+  // Search and Discovery
+  searchVector         String? // Full-text search
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  author              User? @relation("PerformanceAuthor", fields: [authorId], references: [id])
+  reviewer            User? @relation("PerformanceReviewer", fields: [reviewedBy], references: [id])
+  userProgress        UserProgress[]
+  bookmarks           Bookmark[]
+  audioCache          AudioCache[]
+  discussions         Discussion[]
+  culturalValidations CulturalValidation[]
+  
+  @@map("performances")
+}
+
+// Cultural Glossary with Cross-References
+model GlossaryTerm {
+  id String @id @default(cuid())
+  
+  // Term Identity
+  termChinese     String
+  termPinyin      String
+  termEnglish     String
+  
+  // Cultural Context
+  definition            String @db.Text
+  culturalSignificance  String? @db.Text
+  historicalContext     String? @db.Text
+  usageExamples         Json?
+  
+  // Cross-Cultural Connections
+  westernEquivalents     String[]
+  shakespeareReferences  String[]
+  
+  // Multimedia
+  pronunciationAudioUrl  String?
+  visualReferences       String[]
+  
+  // Categorization
+  category               GlossaryCategory
+  difficulty             ComplexityLevel @default(BEGINNER)
+  
+  // Search
+  searchVector           String?
+  
+  // Relations
+  relatedTerms           String[] // IDs of related terms
+  performanceReferences  String[] // IDs of performances using this term
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("glossary_terms")
+}
+
+// Historical Timeline Events
+model TimelineEvent {
+  id String @id @default(cuid())
+  
+  // Event Identity
+  date                 DateTime
+  title                String
+  description          String @db.Text
+  culturalSignificance String @db.Text
+  
+  // Cross-Cultural Context
+  britishParallels     String[]
+  globalContext        String? @db.Text
+  
+  // Sources and Validation
+  sources              Json // Academic citations
+  expertValidated      Boolean @default(false)
+  validatedBy          String?
+  
+  // Categorization
+  eventType            TimelineEventType
+  historicalPeriod     HistoricalPeriod
+  importance           EventImportance @default(MEDIUM)
+  
+  // Media
+  images               String[]
+  audioExamples        String[]
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  validator User? @relation("TimelineValidator", fields: [validatedBy], references: [id])
+  
+  @@map("timeline_events")
+}
+
+// User Learning Progress
+model UserProgress {
+  id String @id @default(cuid())
+  
+  userId        String
+  performanceId String
+  
+  // Progress Tracking
+  progressPercentage Int @default(0)
+  completed          Boolean @default(false)
+  currentPosition    Int @default(0) // Audio position in seconds
+  
+  // Learning Metrics
+  timeSpent          Int @default(0) // Total time in seconds
+  completedSegments  String[] // Audio segment IDs
+  revisitCount       Int @default(1)
+  
+  // Cultural Learning
+  culturalConceptsLearned String[]
+  difficultyRating        Int? // User's perceived difficulty 1-5
+  enjoymentRating         Int? // User's enjoyment rating 1-5
+  
+  // Notes and Insights
+  userNotes         String?
+  culturalInsights  String[]
+  
+  // Timestamps
+  firstAccessed DateTime @default(now())
+  lastAccessed  DateTime @default(now())
+  completedAt   DateTime?
+  
+  // Relations
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  performance Performance @relation(fields: [performanceId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, performanceId])
+  @@map("user_progress")
+}
+
+// Bookmark System for Cultural Content
+model Bookmark {
+  id String @id @default(cuid())
+  
+  userId String
+  
+  // Bookmarkable Content
+  performanceId     String?
+  glossaryTermId    String?
+  timelineEventId   String?
+  discussionId      String?
+  
+  // Bookmark Metadata
+  note              String?
+  tags              String[]
+  folder            String @default("default")
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  performance  Performance? @relation(fields: [performanceId], references: [id], onDelete: Cascade)
+  
+  @@map("bookmarks")
+}
+
+// Audio Generation and Caching
+model AudioCache {
+  id String @id @default(cuid())
+  
+  // Content Identification
+  textHash          String @unique // SHA-256 of text + options
+  textContent       String @db.Text
+  
+  // Audio File Information
+  audioUrl          String
+  audioS3Key        String?
+  fileSizeBytes     Int
+  durationSeconds   Float
+  
+  // TTS Configuration
+  ttsOptions        Json // Voice, speed, style settings
+  voice             String
+  speed             Float
+  culturalStyle     String @default("shakespearean")
+  
+  // Cost and Usage Tracking
+  generationCost    Decimal @db.Decimal(10, 4)
+  accessCount       Int @default(0)
+  lastAccessed      DateTime @default(now())
+  
+  // Content Relations
+  performanceId     String?
+  glossaryTermId    String?
+  
+  // Quality and Validation
+  qualityRating     Float? // Automated quality score
+  expertValidated   Boolean @default(false)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  
+  // Relations
+  performance  Performance? @relation(fields: [performanceId], references: [id])
+  
+  @@map("audio_cache")
+}
+
+// Community Discussions
+model Discussion {
+  id String @id @default(cuid())
+  
+  title            String
+  content          String @db.Text
+  category         DiscussionCategory
+  
+  // Cultural Context
+  performanceId       String?
+  culturalConcepts    String[]
+  culturalQuestion    String?
+  
+  // Moderation
+  status              DiscussionStatus @default(ACTIVE)
+  pinned              Boolean @default(false)
+  locked              Boolean @default(false)
+  
+  // Engagement
+  viewCount           Int @default(0)
+  likeCount           Int @default(0)
+  replyCount          Int @default(0)
+  expertContributions Int @default(0)
+  
+  // Cultural Validation
+  expertValidated     Boolean @default(false)
+  culturalAccuracy    CulturalAccuracy @default(PENDING)
+  
+  // Author and Timestamps
+  authorId   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  
+  // Relations
+  author       User @relation(fields: [authorId], references: [id])
+  performance  Performance? @relation(fields: [performanceId], references: [id])
+  replies      DiscussionReply[]
+  
+  @@map("discussions")
+}
+
+// Discussion Replies
+model DiscussionReply {
+  id String @id @default(cuid())
+  
+  discussionId String
+  authorId     String
+  content      String @db.Text
+  
+  // Cultural Contribution
+  isExpertContribution Boolean @default(false)
+  culturalInsight      String?
+  citations            String[]
+  
+  // Moderation
+  status      ReplyStatus @default(ACTIVE)
+  flagged     Boolean @default(false)
+  
+  // Engagement
+  likeCount   Int @default(0)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  discussion Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  author     User @relation(fields: [authorId], references: [id])
+  
+  @@map("discussion_replies")
+}
+
+// Cultural Expert Contributions and Validations
+model CulturalContribution {
+  id String @id @default(cuid())
+  
+  contributorId String
+  
+  // Contribution Type
+  type              ContributionType
+  contentId         String // ID of content being contributed to
+  
+  // Contribution Content
+  title             String
+  content           String @db.Text
+  culturalContext   String @db.Text
+  sources           Json // Academic and cultural sources
+  
+  // Expert Validation
+  expertCredentials String
+  specialization    String
+  institutionalAffiliation String?
+  
+  // Review Process
+  status            ContributionStatus @default(PENDING)
+  reviewedBy        String?
+  reviewNotes       String?
+  
+  // Impact
+  communityRating   Float?
+  usageCount        Int @default(0)
+  
+  // Timestamps
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  reviewedAt DateTime?
+  
+  // Relations
+  contributor User @relation(fields: [contributorId], references: [id])
+  reviewer    User? @relation("ContributionReviewer", fields: [reviewedBy], references: [id])
+  
+  @@map("cultural_contributions")
+}
+
+// Cultural Content Validation Records
+model CulturalValidation {
+  id String @id @default(cuid())
+  
+  performanceId String
+  validatorId   String
+  
+  // Validation Results
+  historicalAccuracy    ValidationLevel
+  culturalAuthenticity  ValidationLevel
+  translationQuality    ValidationLevel
+  overallRating         ValidationLevel
+  
+  // Feedback
+  culturalCorrections      String[]
+  translationSuggestions   String[]
+  historicalClarifications String[]
+  generalComments          String? @db.Text
+  
+  // Validator Credentials
+  expertiseArea        String
+  qualifications       String
+  yearsOfExperience    Int
+  
+  // Decision
+  approved             Boolean @default(false)
+  requiresRevision     Boolean @default(false)
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  performance Performance @relation(fields: [performanceId], references: [id])
+  validator   User @relation("CulturalValidator", fields: [validatorId], references: [id])
+  
+  @@unique([performanceId, validatorId])
+  @@map("cultural_validations")
+}
+
+// Learning Pathways
+model LearningPath {
+  id String @id @default(cuid())
+  
+  title            String
+  description      String @db.Text
+  culturalFocus    String
+  difficulty       ComplexityLevel
+  estimatedHours   Int
+  
+  // Pathway Structure
+  lessons          Json // Structured lesson plan
+  prerequisites    String[]
+  learningObjectives String[]
+  
+  // Targeting
+  targetAudience   String
+  culturalBackground String[]
+  
+  // Status
+  published        Boolean @default(false)
+  featured         Boolean @default(false)
+  
+  // Creator and Timestamps
+  creatorId    String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  publishedAt  DateTime?
+  
+  // Relations
+  creator User @relation("PathwayCreator", fields: [creatorId], references: [id])
+  enrollments LearningPathEnrollment[]
+  
+  @@map("learning_paths")
+}
+
+// User Enrollment in Learning Pathways
+model LearningPathEnrollment {
+  id String @id @default(cuid())
+  
+  userId         String
+  learningPathId String
+  
+  // Progress
+  currentLessonId    String?
+  completionPercentage Int @default(0)
+  completed          Boolean @default(false)
+  
+  // Customization
+  personalizedPlan   Json?
+  adaptedContent     String[]
+  
+  // Timestamps
+  enrolledAt  DateTime @default(now())
+  completedAt DateTime?
+  lastActivity DateTime @default(now())
+  
+  // Relations
+  user         User @relation("UserPathwayEnrollment", fields: [userId], references: [id])
+  learningPath LearningPath @relation(fields: [learningPathId], references: [id])
+  
+  @@unique([userId, learningPathId])
+  @@map("learning_path_enrollments")
+}
+
+// Analytics and Metrics
+model AnalyticsEvent {
+  id String @id @default(cuid())
+  
+  // Event Identification
+  userId      String?
+  sessionId   String
+  eventType   AnalyticsEventType
+  
+  // Cultural Content Context
+  performanceId   String?
+  glossaryTermId  String?
+  timelineEventId String?
+  
+  // Event Data
+  eventData       Json
+  culturalContext Json?
+  
+  // Technical Context
+  userAgent       String?
+  ipAddress       String?
+  country         String?
+  
+  // Timestamps
+  timestamp   DateTime @default(now())
+  
+  @@map("analytics_events")
+}
+
+// Enums for Type Safety and Cultural Context
+
+enum UserRole {
+  USER
+  CULTURAL_EXPERT
+  MODERATOR
+  ADMIN
+}
+
+enum CulturalLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  SCHOLAR
+}
+
+enum ComplexityLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum HistoricalPeriod {
+  YUAN_DYNASTY      // 元朝 (1271-1368)
+  MING_DYNASTY      // 明朝 (1368-1644) 
+  QING_DYNASTY      // 清朝 (1644-1912)
+  REPUBLICAN_ERA    // 民国 (1912-1949)
+  MODERN_ERA        // 现代 (1949-present)
+  CONTEMPORARY      // 当代 (1980-present)
+}
+
+enum EmotionalTheme {
+  LOVE              // 爱情
+  TRAGEDY           // 悲剧
+  HISTORICAL        // 历史
+  SUPERNATURAL      // 神话
+  COMEDY            // 喜剧
+  MORAL             // 道德
+  POLITICAL         // 政治
+  SPIRITUAL         // 精神
+}
+
+enum ContentStatus {
+  DRAFT
+  CULTURAL_REVIEW
+  TRANSLATION_REVIEW
+  EXPERT_VALIDATION
+  PUBLISHED
+  ARCHIVED
+}
+
+enum GlossaryCategory {
+  CHARACTER_TYPES   // 角色类型
+  MUSICAL_ELEMENTS  // 音乐元素
+  HISTORICAL_TERMS  // 历史术语
+  TECHNICAL_TERMS   // 技术术语
+  CULTURAL_CONCEPTS // 文化概念
+  PERFORMANCE_STYLES // 表演风格
+}
+
+enum TimelineEventType {
+  PERFORMANCE       // 演出
+  POLITICAL         // 政治
+  CULTURAL          // 文化
+  TECHNICAL         // 技术
+  BIOGRAPHICAL      // 传记
+  INSTITUTIONAL     // 机构
+}
+
+enum EventImportance {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum DiscussionCategory {
+  GENERAL
+  CULTURAL_ANALYSIS
+  TRANSLATIONS
+  HISTORICAL_CONTEXT
+  PERFORMANCE_TECHNIQUES
+  EDUCATIONAL_METHODS
+}
+
+enum DiscussionStatus {
+  ACTIVE
+  CLOSED
+  ARCHIVED
+  FLAGGED
+}
+
+enum ReplyStatus {
+  ACTIVE
+  HIDDEN
+  FLAGGED
+  DELETED
+}
+
+enum CulturalAccuracy {
+  PENDING
+  LOW
+  MEDIUM
+  HIGH
+  EXPERT_VERIFIED
+}
+
+enum ContributionType {
+  CULTURAL_CONTEXT
+  HISTORICAL_CLARIFICATION
+  TRANSLATION_IMPROVEMENT
+  PRONUNCIATION_GUIDE
+  CROSS_CULTURAL_REFERENCE
+  SCHOLARLY_CITATION
+}
+
+enum ContributionStatus {
+  PENDING
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  NEEDS_REVISION
+}
+
+enum ValidationLevel {
+  POOR
+  NEEDS_IMPROVEMENT
+  ACCEPTABLE
+  GOOD
+  EXCELLENT
+}
+
+enum AnalyticsEventType {
+  PAGE_VIEW
+  PERFORMANCE_START
+  PERFORMANCE_COMPLETE
+  AUDIO_PLAY
+  AUDIO_PAUSE
+  AUDIO_SEEK
+  GLOSSARY_LOOKUP
+  TIMELINE_EXPLORE
+  DISCUSSION_CREATE
+  DISCUSSION_REPLY
+  BOOKMARK_ADD
+  SEARCH_QUERY
+  CULTURAL_INSIGHT
+}
