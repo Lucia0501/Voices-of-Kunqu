@@ -38,23 +38,23 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
-    // Email magic link for accessibility
-    EmailProvider({
+    // Email magic link for accessibility (conditionally enabled)
+    ...(process.env.EMAIL_SERVER_HOST ? [EmailProvider({
       server: {
         host: process.env.EMAIL_SERVER_HOST,
         port: Number(process.env.EMAIL_SERVER_PORT),
         auth: {
-          user: process.env.EMAIL_SERVER_USER,
-          pass: process.env.EMAIL_SERVER_PASSWORD,
+          user: process.env.EMAIL_SERVER_USER!,
+          pass: process.env.EMAIL_SERVER_PASSWORD!,
         },
       },
-      from: process.env.EMAIL_FROM,
+      from: process.env.EMAIL_FROM!,
       // Custom email template for cultural context
       sendVerificationRequest: async ({ identifier, url, provider }) => {
         // Custom email sending logic for cultural branding
         // This would integrate with our email service
       },
-    }),
+    })] : []),
 
     // Credentials provider for cultural experts and admins
     CredentialsProvider({
@@ -107,7 +107,6 @@ export const authOptions: NextAuthOptions = {
 
   pages: {
     signIn: '/auth/signin',
-    signUp: '/auth/signup',
     error: '/auth/error',
     verifyRequest: '/auth/verify-request',
   },
@@ -156,14 +155,14 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       // Include cultural data in session
       if (token && session.user) {
-        session.user.id = token.sub!;
-        session.user.role = token.role as string;
-        session.user.culturalLevel = token.culturalLevel as string;
-        session.user.preferredComplexity = token.preferredComplexity as string;
-        session.user.nativeLanguage = token.nativeLanguage as string;
-        session.user.culturalInterests = token.culturalInterests as string[];
-        session.user.audioPreferences = token.audioPreferences as any;
-        session.user.accessibilitySettings = token.accessibilitySettings as any;
+        (session.user as any).id = token.sub!;
+        (session.user as any).role = token.role as string;
+        (session.user as any).culturalLevel = token.culturalLevel as string;
+        (session.user as any).preferredComplexity = token.preferredComplexity as string;
+        (session.user as any).nativeLanguage = token.nativeLanguage as string;
+        (session.user as any).culturalInterests = token.culturalInterests as string[];
+        (session.user as any).audioPreferences = token.audioPreferences as any;
+        (session.user as any).accessibilitySettings = token.accessibilitySettings as any;
       }
       return session;
     },
@@ -347,14 +346,6 @@ export async function createCulturalExpertAccount(data: {
       role: 'CULTURAL_EXPERT',
       culturalLevel: 'SCHOLAR',
       preferredComplexity: 'ADVANCED',
-      // Store expert credentials for validation
-      expertCredentials: JSON.stringify({
-        expertise: data.expertise,
-        qualifications: data.qualifications,
-        institutionalAffiliation: data.institutionalAffiliation,
-        verificationStatus: 'PENDING',
-        verificationDate: null,
-      }),
     },
   });
 }

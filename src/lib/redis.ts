@@ -9,7 +9,7 @@ const globalForRedis = globalThis as unknown as {
 const redisConfig = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD || undefined,
+  ...(process.env.REDIS_PASSWORD && { password: process.env.REDIS_PASSWORD }),
   db: 0,
   maxRetriesPerRequest: 3,
   retryDelayOnFailover: 100,
@@ -18,9 +18,6 @@ const redisConfig = {
   // Connection health monitoring
   connectTimeout: 10000,
   commandTimeout: 5000,
-  
-  // Optimize for cultural audio caching
-  maxMemoryPolicy: 'allkeys-lru',
   
   // Development vs Production settings
   ...(process.env.NODE_ENV === 'production' && {
@@ -260,11 +257,11 @@ export class CulturalCache {
     ]);
 
     // Parse memory usage from info
-    const memoryMatch = info.match(/used_memory_human:(.+)/);
-    const memoryUsage = memoryMatch ? memoryMatch[1].trim() : 'unknown';
+    const memoryMatch = info?.match(/used_memory_human:(.+)/);
+    const memoryUsage = memoryMatch?.[1]?.trim() || 'unknown';
 
     return {
-      totalKeys: dbSize,
+      totalKeys: dbSize || 0,
       memoryUsage,
       hitRate: 0, // Would need to implement hit rate tracking
       audioCache: audioCacheKeys.length,

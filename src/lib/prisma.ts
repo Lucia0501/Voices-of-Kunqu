@@ -7,11 +7,13 @@ const globalForPrisma = globalThis as unknown as {
 
 export const prisma = globalForPrisma.prisma ?? new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  datasources: {
-    db: {
-      url: process.env.DATABASE_URL,
+  ...(process.env.DATABASE_URL && {
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
     },
-  },
+  }),
 });
 
 // Prevent multiple instances in development
@@ -74,7 +76,6 @@ export class CulturalDatabase {
         updatedAt: true
       },
       orderBy: [
-        { pinned: 'desc' },
         { createdAt: 'desc' }
       ],
       skip: offset,

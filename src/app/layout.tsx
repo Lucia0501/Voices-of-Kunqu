@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     'British education',
     'Chinese heritage',
   ],
-  authors: [{ name: 'Icarus', email: 'zhehongl91@gmail.com' }],
+  authors: [{ name: 'Icarus' }],
   creator: 'Voices of Kunqu Team',
   publisher: 'Voices of Kunqu',
   formatDetection: {
@@ -99,9 +99,11 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  verification: {
-    google: process.env.GOOGLE_VERIFICATION_ID,
-  },
+  ...(process.env.GOOGLE_VERIFICATION_ID && {
+    verification: {
+      google: process.env.GOOGLE_VERIFICATION_ID,
+    },
+  }),
   category: 'education',
   classification: 'Cultural Education Platform',
   other: {
