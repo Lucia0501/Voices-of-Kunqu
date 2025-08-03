@@ -1,0 +1,75 @@
+name: Security Scanning
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM
+  workflow_dispatch:
+
+jobs:
+  dependency-scan:
+    name: Dependency Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit npm dependencies
+        run: npm audit --audit-level high
+
+      - name: Snyk vulnerability scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --file=package.json
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            snyk-report.json
+            npm-audit.json
+
+  web-security-scan:
+    name: Web Application Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: OWASP ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.10.0
+        with:
+          target: 'https://voices-of-kunqu.org'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+
+  cultural-content-security:
+    name: Cultural Content Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Scan for sensitive cultural data
+        run: |
+          echo "Scanning for sensitive data in cultural content..."
+          grep -r "password\|secret\|key\|token" --include="*.md" . && exit 1 || echo "No sensitive data found"
+          
+      - name: Validate cultural content integrity
+        run: |
+          echo "Validating cultural content integrity..."
+          # Check for proper UTF-8 encoding
+          file --mime-encoding **/*.md | grep -v utf-8 && exit 1 || echo "All cultural content properly encoded"

@@ -15,6 +15,7 @@ model User {
   id        String   @id @default(cuid())
   email     String   @unique
   name      String?
+  password  String?  // For credentials-based auth (cultural experts/admins)
   role      UserRole @default(USER)
   image     String?
   
@@ -48,6 +49,21 @@ model User {
   discussions        Discussion[]
   discussionReplies  DiscussionReply[]
   culturalContributions CulturalContribution[]
+  
+  // Performance Relations
+  authoredPerformances    Performance[] @relation("PerformanceAuthor")
+  reviewedPerformances    Performance[] @relation("PerformanceReviewer")
+  
+  // Timeline Relations
+  validatedTimelineEvents TimelineEvent[] @relation("TimelineValidator")
+  
+  // Cultural Validation Relations
+  reviewedContributions   CulturalContribution[] @relation("ContributionReviewer")
+  culturalValidations     CulturalValidation[] @relation("CulturalValidator")
+  
+  // Learning Path Relations
+  createdLearningPaths    LearningPath[] @relation("PathwayCreator")
+  learningPathEnrollments LearningPathEnrollment[] @relation("UserPathwayEnrollment")
   
   @@map("users")
 }

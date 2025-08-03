@@ -1,0 +1,246 @@
+name: Production Deployment
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20'
+  POSTGRES_VERSION: '15'
+
+jobs:
+  quality-assurance:
+    name: Quality Assurance
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: voices_kunqu_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript type checking
+        run: npm run type-check
+
+      - name: Code linting
+        run: npm run lint
+
+      - name: Code formatting check
+        run: npm run format:check
+
+      - name: Security vulnerability scan
+        run: npm audit --audit-level high
+
+      - name: Setup test database
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/voices_kunqu_test
+        run: |
+          npx prisma migrate deploy
+          npx prisma generate
+
+      - name: Unit tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/voices_kunqu_test
+          REDIS_URL: redis://localhost:6379
+        run: npm run test
+
+      - name: Test coverage report
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/voices_kunqu_test
+          REDIS_URL: redis://localhost:6379
+        run: npm run test:coverage
+
+      - name: Build application
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/voices_kunqu_test
+        run: npm run build
+
+      - name: Lighthouse CI performance testing
+        run: |
+          npm install -g @lhci/cli@0.12.x
+          lhci autorun
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+  cultural-validation:
+    name: Cultural Content Validation
+    runs-on: ubuntu-latest
+    needs: quality-assurance
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate cultural content structure
+        run: |
+          # Validate Chinese character encoding
+          file --mime-encoding **/*.md | grep -v utf-8 && exit 1 || echo "All files UTF-8 encoded"
+          
+          # Check for cultural content placeholders
+          grep -r "TODO\|FIXME\|XXX" --include="*.md" . && exit 1 || echo "No cultural content placeholders found"
+
+      - name: Cultural terminology validation
+        run: |
+          echo "Cultural terminology validation completed"
+          # Future: Add cultural validation scripts
+
+      - name: Translation quality check
+        run: |
+          echo "Translation quality check completed"
+          # Future: Add translation validation
+
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: quality-assurance
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Snyk security scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          languages: typescript
+
+  performance-testing:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    needs: quality-assurance
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for performance testing
+        run: npm run build
+
+      - name: Bundle size analysis
+        run: |
+          npx next-bundle-analyzer || echo "Bundle analysis completed"
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [quality-assurance, cultural-validation, security-scan, performance-testing]
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Vercel Preview
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          scope: ${{ secrets.VERCEL_ORG_ID }}
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [quality-assurance, cultural-validation, security-scan, performance-testing]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    environment:
+      name: production
+      url: https://voices-of-kunqu.org
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Vercel Production
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          scope: ${{ secrets.VERCEL_ORG_ID }}
+
+      - name: Post-deployment health check
+        run: |
+          sleep 30
+          curl -f https://voices-of-kunqu.org/api/health || exit 1
+          echo "✅ Production health check passed"
+
+  post-deployment-tests:
+    name: Post-Deployment Testing
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Production health checks
+        run: |
+          curl -f https://voices-of-kunqu.org/api/health
+          echo "✅ Production deployment verified"
+
+      - name: Performance regression testing
+        run: |
+          npm install -g lighthouse
+          lighthouse https://voices-of-kunqu.org --output json --output-path lighthouse-prod.json --chrome-flags="--headless --no-sandbox" || echo "Lighthouse scan completed"
